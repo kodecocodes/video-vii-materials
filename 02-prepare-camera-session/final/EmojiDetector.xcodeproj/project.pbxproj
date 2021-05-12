@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0A60D979260E82CA0053F9A0 /* HandGesture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A60D978260E82CA0053F9A0 /* HandGesture.swift */; };
+		0A60D979260E82CA0053F9A0 /* HandPose.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A60D978260E82CA0053F9A0 /* HandPose.swift */; };
 		0A60D97F260E86260053F9A0 /* Finger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A60D97E260E86260053F9A0 /* Finger.swift */; };
 		1839F4B025190F2A00BB00F1 /* AppMain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1839F4AF25190F2A00BB00F1 /* AppMain.swift */; };
 		18D775C522AD944300AE281E /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18D775C422AD944300AE281E /* ContentView.swift */; };
@@ -17,12 +17,11 @@
 		304BEFBF2586253400CED98D /* CameraViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 304BEFBE2586253400CED98D /* CameraViewController.swift */; };
 		304BEFC2258625C300CED98D /* CameraPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 304BEFC1258625C300CED98D /* CameraPreview.swift */; };
 		304BEFC52586261B00CED98D /* CameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 304BEFC42586261B00CED98D /* CameraView.swift */; };
-		304BEFCC258628F800CED98D /* AppError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 304BEFCB258628F800CED98D /* AppError.swift */; };
 		308D74B62587B18700A39EB8 /* FingersOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 308D74B52587B18700A39EB8 /* FingersOverlay.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		0A60D978260E82CA0053F9A0 /* HandGesture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandGesture.swift; sourceTree = "<group>"; };
+		0A60D978260E82CA0053F9A0 /* HandPose.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandPose.swift; sourceTree = "<group>"; };
 		0A60D97E260E86260053F9A0 /* Finger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Finger.swift; sourceTree = "<group>"; };
 		1839F4AF25190F2A00BB00F1 /* AppMain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppMain.swift; sourceTree = "<group>"; };
 		18D775BD22AD944300AE281E /* EmojiDetector.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EmojiDetector.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -34,7 +33,6 @@
 		304BEFBE2586253400CED98D /* CameraViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraViewController.swift; sourceTree = "<group>"; };
 		304BEFC1258625C300CED98D /* CameraPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPreview.swift; sourceTree = "<group>"; };
 		304BEFC42586261B00CED98D /* CameraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraView.swift; sourceTree = "<group>"; };
-		304BEFCB258628F800CED98D /* AppError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppError.swift; sourceTree = "<group>"; };
 		308D74B52587B18700A39EB8 /* FingersOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FingersOverlay.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -49,6 +47,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0ACCF3D7260FBA2300976F25 /* HandPose */ = {
+			isa = PBXGroup;
+			children = (
+				0A60D978260E82CA0053F9A0 /* HandPose.swift */,
+				0A60D97E260E86260053F9A0 /* Finger.swift */,
+			);
+			path = HandPose;
+			sourceTree = "<group>";
+		};
 		18D775B422AD944300AE281E = {
 			isa = PBXGroup;
 			children = (
@@ -73,9 +80,8 @@
 				1839F4AF25190F2A00BB00F1 /* AppMain.swift */,
 				18D775C422AD944300AE281E /* ContentView.swift */,
 				308D74B52587B18700A39EB8 /* FingersOverlay.swift */,
-				0A60D978260E82CA0053F9A0 /* HandGesture.swift */,
-				0A60D97E260E86260053F9A0 /* Finger.swift */,
 				304BEFC92586268B00CED98D /* CameraView */,
+				0ACCF3D7260FBA2300976F25 /* HandPose */,
 				308D74B42587B10800A39EB8 /* Supporting Files */,
 				18D775C822AD944400AE281E /* Preview Content */,
 			);
@@ -106,7 +112,6 @@
 				18D775C622AD944400AE281E /* Assets.xcassets */,
 				18D775DA22AD963800AE281E /* LaunchScreen.storyboard */,
 				18D775CE22AD944400AE281E /* Info.plist */,
-				304BEFCB258628F800CED98D /* AppError.swift */,
 			);
 			path = "Supporting Files";
 			sourceTree = "<group>";
@@ -210,8 +215,7 @@
 				304BEFBF2586253400CED98D /* CameraViewController.swift in Sources */,
 				0A60D97F260E86260053F9A0 /* Finger.swift in Sources */,
 				1839F4B025190F2A00BB00F1 /* AppMain.swift in Sources */,
-				304BEFCC258628F800CED98D /* AppError.swift in Sources */,
-				0A60D979260E82CA0053F9A0 /* HandGesture.swift in Sources */,
+				0A60D979260E82CA0053F9A0 /* HandPose.swift in Sources */,
 				304BEFC2258625C300CED98D /* CameraPreview.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -34,33 +34,18 @@ import SwiftUI
 
 struct ContentView: View {
   @State private var overlayPoints: [CGPoint] = []
-  @State private var emojiGestures: [HandGesture] = []
   
   var body: some View {
     ZStack(alignment: .top) {
-      CameraView { fingerTipPoints, gestures in
-        overlayPoints = fingerTipPoints
-        emojiGestures = gestures
-      }
+      CameraView()
       .overlay(
         FingersOverlay(with: overlayPoints)
           .foregroundColor(.orange)
       )
       .edgesIgnoringSafeArea(.all)
       
-      Text(concatenateEmoji(gestures: emojiGestures))
+      Text("👋")
         .font(.largeTitle)
-    }
-  }
-  
-  func concatenateEmoji(gestures: [HandGesture]) -> String {
-    gestures.reduce(into: "") { string, gesture in
-      switch gesture {
-      case .unsure:
-        return
-      default:
-        string += " " + gesture.rawValue
-      }
     }
   }
 }

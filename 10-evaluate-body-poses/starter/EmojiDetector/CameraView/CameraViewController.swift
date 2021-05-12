@@ -35,7 +35,24 @@ import AVFoundation
 import Vision
 
 final class CameraViewController: UIViewController {
-  private var cameraView: CameraPreview { view as! CameraPreview }
+  private let cameraCaptureSession = AVCaptureSession()
+  private var cameraPreview: CameraPreview { view as! CameraPreview }
+
+  private let videoDataOutputQueue = DispatchQueue(
+    label: "CameraFeedOutput", qos: .userInteractive
+  )
+  
+  private let handPoseRequest: VNDetectHumanHandPoseRequest = {
+    let request = VNDetectHumanHandPoseRequest()
+    request.maximumHandCount = 2
+    return request
+  }()
+  
+  // TODO: - Add a body pose request
+  private let bodyPoseRequest = VNDetectHumanBodyPoseRequest()
+  
+  var pointsProcessor: ((_ points: [CGPoint], _ poses: [HandPose]) -> Void)?
+  var bodyPointsProcessor: ((_ points: [CGPoint], _ pose: BodyPose) -> Void)?
   
   override func loadView() {
     view = CameraPreview()
@@ -43,50 +60,121 @@ final class CameraViewController: UIViewController {
   
   override func viewDidAppear(_ animated: Bool) {
     super.viewDidAppear(animated)
-
+    setupAVSession()
+    setupPreview()
+    cameraCaptureSession.startRunning()
   }
   
   override func viewWillDisappear(_ animated: Bool) {
-
+    cameraCaptureSession.stopRunning()
     super.viewWillDisappear(animated)
   }
   
-  override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
-    // Update video orientation based on interface orientation
-    
-    super.viewWillTransition(to: size, with: coordinator)
+  func setupPreview() {
+    cameraPreview.previewLayer.session = cameraCaptureSession
+    cameraPreview.previewLayer.videoGravity = .resizeAspectFill
   }
   
-  func setupAVSession() throws {
-    // Select a front facing camera, make an input.
+  func setupAVSession() {
+    // Start session configuration
+    cameraCaptureSession.beginConfiguration()
     
-    // Add a video input.
-
-    // Add a video data output.
+    // Setup video data input
+    guard
+      let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
+      let deviceInput = try? AVCaptureDeviceInput(device: videoDevice),
+      cameraCaptureSession.canAddInput(deviceInput)
+    else { return }
+    
+    cameraCaptureSession.sessionPreset = AVCaptureSession.Preset.high
+    cameraCaptureSession.addInput(deviceInput)
+    
+    // Setup video data output
+    let dataOutput = AVCaptureVideoDataOutput()
+    guard cameraCaptureSession.canAddOutput(dataOutput)
+    else { return }
+    
+    cameraCaptureSession.addOutput(dataOutput)
+    dataOutput.alwaysDiscardsLateVideoFrames = true
+    dataOutput.setSampleBufferDelegate(self, queue: videoDataOutputQueue)
+    
+    // Commit session configuration
+    cameraCaptureSession.commitConfiguration()
   }
 }
 
 // MARK: - AVCaptureVideoDataOutputSampleBufferDelegate
 extension CameraViewController: AVCaptureVideoDataOutputSampleBufferDelegate {
-  
-}
-
-// MARK: - Extensions
-extension AVCaptureVideoOrientation {
-  static var currentInterfaceOrientation: AVCaptureVideoOrientation {
-    let interfaceOrientation = UIApplication.shared.windows.first?.windowScene?.interfaceOrientation
+  func captureOutput(
+    _ output: AVCaptureOutput,
+    didOutput sampleBuffer: CMSampleBuffer,
+    from connection: AVCaptureConnection
+  ) {
+    var recognizedPoints: [VNRecognizedPoint] = []
+    var poses: [HandPose] = []
     
-    switch interfaceOrientation {
-    case .portrait:
-      return AVCaptureVideoOrientation.portrait
-    case .landscapeLeft:
-      return AVCaptureVideoOrientation.landscapeLeft
-    case .landscapeRight:
-      return AVCaptureVideoOrientation.landscapeRight
-    case .portraitUpsideDown:
-      return AVCaptureVideoOrientation.portraitUpsideDown
-    default:
-      return AVCaptureVideoOrientation.portrait
+    var recognizedBodyPoints: [VNRecognizedPoint] = []
+    var bodyPose = BodyPose.unsure
+
+    func convertPoint(_ point: VNRecognizedPoint) -> CGPoint {
+      let cgPoint = CGPoint(x: 1 - point.y, y: 1 - point.x)
+      return cameraPreview.previewLayer.layerPointConverted(fromCaptureDevicePoint: cgPoint)
+    }
+
+    defer {
+      DispatchQueue.main.sync {
+        let convertedPoints = recognizedPoints.map(convertPoint(_:))
+        pointsProcessor?(convertedPoints, poses)
+        
+        let convertedBodyPoints = recognizedBodyPoints.map(convertPoint(_:))
+        bodyPointsProcessor?(convertedBodyPoints, bodyPose)
+      }
+    }
+    
+    // TODO: -  Reuse this image request handler
+    let handler = VNImageRequestHandler(
+      cmSampleBuffer: sampleBuffer,
+      orientation: .right,
+      options: [:]
+    )
+    
+    do {
+      try handler.perform([handPoseRequest, bodyPoseRequest])
+      
+      // TODO: - Process the body pose request observations
+      if let bodyPoseResults = bodyPoseRequest.results?.first {
+        let armJoints: [VNHumanBodyPoseObservation.JointName] = [.leftWrist, .leftElbow, .leftShoulder, .rightShoulder, .rightElbow, .rightWrist]
+        
+        let armLandmarks = try bodyPoseResults.recognizedPoints(.all)
+          .filter { armJoints.contains($0.key) }
+          .filter { $0.value.confidence > 0.3 }
+        
+        bodyPose = BodyPose.evaluateBodyPose(from: armLandmarks)
+        recognizedBodyPoints = Array(armLandmarks.values)
+      }
+      
+      guard
+        let results = handPoseRequest.results?.prefix(2),
+        !results.isEmpty
+      else { return }
+      
+      try results.forEach { observation in
+        let handLandmarks = try observation.recognizedPoints(.all)
+          .filter { point in
+            point.value.confidence > 0.6
+          }
+        
+        let tipPoints: [VNHumanHandPoseObservation.JointName] = [.thumbTip, .indexTip, .middleTip, .ringTip, .littleTip]
+        let recognizedTips = tipPoints
+          .compactMap { handLandmarks[$0] }
+        
+        recognizedPoints += recognizedTips
+        
+        poses.append(HandPose.evaluateHandPose(from: handLandmarks))
+      }
+    } catch {
+      cameraCaptureSession.stopRunning()
+      print(error.localizedDescription)
     }
   }
 }

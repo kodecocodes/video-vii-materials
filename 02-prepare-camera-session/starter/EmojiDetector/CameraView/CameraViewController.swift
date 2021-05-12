@@ -32,57 +32,61 @@
 
 import UIKit
 import AVFoundation
-import Vision
 
 final class CameraViewController: UIViewController {
-  private var cameraView: CameraPreview { view as! CameraPreview }
   
   override func loadView() {
-    view = CameraPreview()
+    // Set the view controller's root view to a CameraPreview.
   }
   
   override func viewDidAppear(_ animated: Bool) {
     super.viewDidAppear(animated)
-
+    
+    // Setup the capture session and preview layer
+    
+    // Start running the session. This makes the camera feed visible.
   }
   
   override func viewWillDisappear(_ animated: Bool) {
-
+    // Stop running the session.
+    
     super.viewWillDisappear(animated)
   }
   
-  override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
-    // Update video orientation based on interface orientation
-    
-    super.viewWillTransition(to: size, with: coordinator)
+  override func viewDidLayoutSubviews() {
+    // Update the video orientation when the device rotates
+
   }
   
-  func setupAVSession() throws {
-    // Select a front facing camera, make an input.
-    
-    // Add a video input.
+  func setupPreview() {
 
-    // Add a video data output.
+  }
+  
+  func setupAVSession() {
+    // Start session configuration
+    
+    // Setup video data input
+    
+    // Setup video data output
+    
+    // Commit session configuration
   }
 }
 
 // MARK: - AVCaptureVideoDataOutputSampleBufferDelegate
-extension CameraViewController: AVCaptureVideoDataOutputSampleBufferDelegate {
-  
-}
 
-// MARK: - Extensions
+// MARK: - AVCaptureVideoOrientation
 extension AVCaptureVideoOrientation {
-  static var currentInterfaceOrientation: AVCaptureVideoOrientation {
-    let interfaceOrientation = UIApplication.shared.windows.first?.windowScene?.interfaceOrientation
+  static var currentDeviceOrientation: AVCaptureVideoOrientation {
+    let deviceOrientation = UIDevice.current.orientation
     
-    switch interfaceOrientation {
+    switch deviceOrientation {
     case .portrait:
       return AVCaptureVideoOrientation.portrait
     case .landscapeLeft:
-      return AVCaptureVideoOrientation.landscapeLeft
-    case .landscapeRight:
       return AVCaptureVideoOrientation.landscapeRight
+    case .landscapeRight:
+      return AVCaptureVideoOrientation.landscapeLeft
     case .portraitUpsideDown:
       return AVCaptureVideoOrientation.portraitUpsideDown
     default:

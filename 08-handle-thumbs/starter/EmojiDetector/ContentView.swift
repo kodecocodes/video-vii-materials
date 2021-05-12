@@ -33,11 +33,34 @@
 import SwiftUI
 
 struct ContentView: View {
+  @State private var overlayPoints: [CGPoint] = []
+  @State private var emojiPoses: [HandPose] = []
   
   var body: some View {
     ZStack(alignment: .top) {
-      Text("😺")
+      CameraView { points, poses in
+        overlayPoints = points
+        emojiPoses = poses
+      }
+      .overlay(
+        FingersOverlay(with: overlayPoints)
+          .foregroundColor(.orange)
+      )
+      .edgesIgnoringSafeArea(.all)
+      
+      Text(concatenateEmoji(poses: emojiPoses))
         .font(.largeTitle)
+    }
+  }
+  
+  func concatenateEmoji(poses: [HandPose]) -> String {
+    poses.reduce(into: "") { string, pose in
+      switch pose {
+      case .unsure:
+        return
+      default:
+        string += " " + pose.rawValue
+      }
     }
   }
 }

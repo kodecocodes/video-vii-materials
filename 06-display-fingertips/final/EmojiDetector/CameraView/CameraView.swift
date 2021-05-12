@@ -33,12 +33,13 @@
 import SwiftUI
 
 struct CameraView: UIViewControllerRepresentable {
-  var pointsProcessorHandler: (([CGPoint], [HandGesture]) -> Void)?
-
+  // Add a closure to give SwiftUI access to the recognized landmarks
+  var pointsProcessor: ((_ points: [CGPoint]) -> Void)?
+  
   func makeUIViewController(context: Context) -> CameraViewController {
-    let cvc = CameraViewController()
-    cvc.pointsProcessorHandler = pointsProcessorHandler
-    return cvc
+    let cameraViewController = CameraViewController()
+    cameraViewController.pointsProcessor = pointsProcessor
+    return cameraViewController
   }
 
   func updateUIViewController(

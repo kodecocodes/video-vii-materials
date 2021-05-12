@@ -32,25 +32,15 @@
 
 import UIKit
 import AVFoundation
-import Vision
 
 final class CameraViewController: UIViewController {
-  // swiftlint:disable:next force_cast
-  private var cameraView: CameraPreview { view as! CameraPreview }
+    
+  private var cameraCaptureSession = AVCaptureSession()
+  private var cameraPreview: CameraPreview { view as! CameraPreview }
   
   private let videoDataOutputQueue = DispatchQueue(
-    label: "CameraFeedOutput",
-    qos: .userInteractive
+    label: "CameraFeedOutput", qos: .userInteractive
   )
-  private var cameraFeedSession: AVCaptureSession?
-  
-  private let handPoseRequest: VNDetectHumanHandPoseRequest = {
-    let request = VNDetectHumanHandPoseRequest()
-    request.maximumHandCount = 2
-    return request
-  }()
-  
-  var pointsProcessorHandler: ((_ points: [CGPoint], _ gestures: [HandGesture]) -> Void)?
   
   override func loadView() {
     view = CameraPreview()
@@ -58,166 +48,77 @@ final class CameraViewController: UIViewController {
   
   override func viewDidAppear(_ animated: Bool) {
     super.viewDidAppear(animated)
-    do {
-      if cameraFeedSession == nil {
-        try setupAVSession()
-        cameraView.previewLayer.session = cameraFeedSession
-        cameraView.previewLayer.connection?.videoOrientation = AVCaptureVideoOrientation.currentInterfaceOrientation
-        cameraView.previewLayer.videoGravity = .resizeAspectFill
-      }
-      cameraFeedSession?.startRunning()
-    } catch {
-      print(error.localizedDescription)
-    }
+    
+    // Setup the capture session and preview layer
+    setupAVSession()
+    setupPreview()
+    
+    // Start running the session. This makes the camera feed visible.
+    cameraCaptureSession.startRunning()
   }
   
   override func viewWillDisappear(_ animated: Bool) {
-    cameraFeedSession?.stopRunning()
+    // Stop running the session.
+    cameraCaptureSession.stopRunning()
     super.viewWillDisappear(animated)
   }
   
-  override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
-    cameraView.previewLayer.connection?.videoOrientation = AVCaptureVideoOrientation.currentInterfaceOrientation
-    super.viewWillTransition(to: size, with: coordinator)
+  override func viewDidLayoutSubviews() {
+    // Update the video orientation when the device rotates
+    cameraPreview.previewLayer.connection?.videoOrientation = AVCaptureVideoOrientation.currentDeviceOrientation
   }
   
-  func setupAVSession() throws {
-    // Select a front facing camera, make an input.
-    guard let videoDevice = AVCaptureDevice.default(
-            .builtInWideAngleCamera,
-            for: .video,
-            position: .front)
-    else {
-      throw AppError.captureSessionSetup(
-        reason: "Could not find a front facing camera."
-      )
-    }
+  func setupPreview() {
+    cameraPreview.previewLayer.session = cameraCaptureSession
+    cameraPreview.previewLayer.videoGravity = .resizeAspectFill
+    cameraPreview.previewLayer.connection?.videoOrientation = AVCaptureVideoOrientation.currentDeviceOrientation
+  }
+  
+  func setupAVSession() {
+    // Start session configuration
+    cameraCaptureSession.beginConfiguration()
+    cameraCaptureSession.sessionPreset = AVCaptureSession.Preset.high
     
-    guard let deviceInput = try? AVCaptureDeviceInput(
-      device: videoDevice
-    ) else {
-      throw AppError.captureSessionSetup(
-        reason: "Could not create video device input."
-      )
-    }
+    // Setup video data input
+    guard
+      let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
+      let deviceInput = try? AVCaptureDeviceInput(device: videoDevice),
+      cameraCaptureSession.canAddInput(deviceInput)
+      else { return }
     
-    let session = AVCaptureSession()
-    session.beginConfiguration()
-    session.sessionPreset = AVCaptureSession.Preset.high
+    cameraCaptureSession.addInput(deviceInput)
     
-    // Add a video input.
-    guard session.canAddInput(deviceInput) else {
-      throw AppError.captureSessionSetup(
-        reason: "Could not add video device input to the session"
-      )
-    }
-    session.addInput(deviceInput)
-    
+    // Setup video data output
     let dataOutput = AVCaptureVideoDataOutput()
-    if session.canAddOutput(dataOutput) {
-      session.addOutput(dataOutput)
-      // Add a video data output.
-      dataOutput.alwaysDiscardsLateVideoFrames = true
-      dataOutput.setSampleBufferDelegate(self, queue: videoDataOutputQueue)
-    } else {
-      throw AppError.captureSessionSetup(
-        reason: "Could not add video data output to the session"
-      )
-    }
-    session.commitConfiguration()
-    cameraFeedSession = session
-  }
-  
-  func processPoints(fingerTips: [CGPoint], gestures: [HandGesture]) {
-    // Convert points from AVFoundation coordinates to UIKit coordinates.
-    let convertedPoints = fingerTips.map {
-      cameraView.previewLayer.layerPointConverted(fromCaptureDevicePoint: $0)
-    }
-    pointsProcessorHandler?(convertedPoints, gestures)
+    guard cameraCaptureSession.canAddOutput(dataOutput)
+    else { return }
+    
+    cameraCaptureSession.addOutput(dataOutput)
+    dataOutput.alwaysDiscardsLateVideoFrames = true
+    dataOutput.setSampleBufferDelegate(self, queue: videoDataOutputQueue)
+    
+    // Commit session configuration
+    cameraCaptureSession.commitConfiguration()
   }
 }
 
 // MARK: - AVCaptureVideoDataOutputSampleBufferDelegate
 extension CameraViewController: AVCaptureVideoDataOutputSampleBufferDelegate {
-  func captureOutput(
-    _ output: AVCaptureOutput,
-    didOutput sampleBuffer: CMSampleBuffer,
-    from connection: AVCaptureConnection
-  ) {
-    var fingerTips: [CGPoint] = []
-    var gestures: [HandGesture] = [.unsure]
-    
-    defer {
-      DispatchQueue.main.sync {
-        self.processPoints(fingerTips: fingerTips, gestures: gestures)
-      }
-    }
-    
-    let handler = VNImageRequestHandler(
-      cmSampleBuffer: sampleBuffer,
-      orientation: .up,
-      options: [:]
-    )
-    do {
-      // Perform VNDetectHumanHandPoseRequest
-      try handler.perform([handPoseRequest])
-      
-      // Continue only when at least a hand was detected in the frame. We're interested in maximum of two hands.
-      guard
-        let results = handPoseRequest.results?.prefix(2),
-        !results.isEmpty
-      else {
-        return
-      }
-      
-      var recognizedPoints: [VNRecognizedPoint] = []
-      
-      try results.forEach { observation in
-        // MARK: Get points for all fingers
-        let handLandmarks = try observation.recognizedPoints(.all)
-          // Filter out low confidence results
-          .filter { joint in
-            joint.value.confidence > 0.5
-          }
-        
-        // MARK: Look for tips
-        let tipPoints: [VNHumanHandPoseObservation.JointName] = [.thumbTip, .indexTip, .middleTip, .ringTip, .littleTip]
-        let recognizedTips = tipPoints
-          .compactMap { handLandmarks[$0] }
-        
-        // MARK: Add the recognized tips
-        recognizedPoints += recognizedTips
-        
-        // MARK: Add recognized gesture
-        gestures.append(HandGesture.evaluateHandPose(from: handLandmarks))
-      }
-      
-      // MARK: Convert & store recognized points
-      fingerTips = recognizedPoints.map {
-        // Convert points from Vision coordinates to AVFoundation coordinates.
-        CGPoint(x: $0.location.x, y: 1 - $0.location.y)
-      }
-    } catch {
-      cameraFeedSession?.stopRunning()
-      print(error.localizedDescription)
-    }
-  }
   
-
 }
 
-// MARK: - Extensions
+// MARK: - AVCaptureVideoOrientation
 extension AVCaptureVideoOrientation {
-  static var currentInterfaceOrientation: AVCaptureVideoOrientation {
-    let interfaceOrientation = UIApplication.shared.windows.first?.windowScene?.interfaceOrientation
+  static var currentDeviceOrientation: AVCaptureVideoOrientation {
+    let deviceOrientation = UIDevice.current.orientation
     
-    switch interfaceOrientation {
+    switch deviceOrientation {
     case .portrait:
       return AVCaptureVideoOrientation.portrait
     case .landscapeLeft:
-      return AVCaptureVideoOrientation.landscapeLeft
-    case .landscapeRight:
       return AVCaptureVideoOrientation.landscapeRight
+    case .landscapeRight:
+      return AVCaptureVideoOrientation.landscapeLeft
     case .portraitUpsideDown:
       return AVCaptureVideoOrientation.portraitUpsideDown
     default:

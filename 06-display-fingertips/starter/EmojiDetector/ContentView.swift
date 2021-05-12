@@ -33,10 +33,18 @@
 import SwiftUI
 
 struct ContentView: View {
+  @State private var overlayPoints: [CGPoint] = []
   
   var body: some View {
     ZStack(alignment: .top) {
-      Text("😺")
+      CameraView()
+      .overlay(
+        FingersOverlay(with: overlayPoints)
+          .foregroundColor(.orange)
+      )
+      .edgesIgnoringSafeArea(.all)
+      
+      Text("👋")
         .font(.largeTitle)
     }
   }

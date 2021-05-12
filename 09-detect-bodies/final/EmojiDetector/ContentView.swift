@@ -34,32 +34,48 @@ import SwiftUI
 
 struct ContentView: View {
   @State private var overlayPoints: [CGPoint] = []
-  @State private var emojiGestures: [HandGesture] = []
+  @State private var emojiPoses: [HandPose] = []
+  
+  @State private var bodyPoints: [CGPoint] = []
+  @State private var bodyPose = BodyPose.unsure
   
   var body: some View {
     ZStack(alignment: .top) {
-      CameraView { fingerTipPoints, gestures in
-        overlayPoints = fingerTipPoints
-        emojiGestures = gestures
+      CameraView { points, poses in
+        overlayPoints = points
+        emojiPoses = poses
+      }
+      bodyPointsProcessor: { points, pose in
+        bodyPoints = points
+        bodyPose = pose
       }
       .overlay(
         FingersOverlay(with: overlayPoints)
           .foregroundColor(.orange)
       )
+      .overlay(
+        BodyOverlay(with: bodyPoints)
+          .foregroundColor(.purple)
+      )
       .edgesIgnoringSafeArea(.all)
       
-      Text(concatenateEmoji(gestures: emojiGestures))
-        .font(.largeTitle)
+      VStack(spacing: 20) {
+        Text(concatenateEmoji(poses: emojiPoses))
+          .font(.largeTitle)
+        Spacer()
+        Text(bodyPose.rawValue)
+          .font(Font.system(size: 100))
+      }
     }
   }
   
-  func concatenateEmoji(gestures: [HandGesture]) -> String {
-    gestures.reduce(into: "") { string, gesture in
-      switch gesture {
+  func concatenateEmoji(poses: [HandPose]) -> String {
+    poses.reduce(into: "") { string, pose in
+      switch pose {
       case .unsure:
         return
       default:
-        string += " " + gesture.rawValue
+        string += " " + pose.rawValue
       }
     }
   }

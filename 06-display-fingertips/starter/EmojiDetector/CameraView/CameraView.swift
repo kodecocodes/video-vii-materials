@@ -33,9 +33,10 @@
 import SwiftUI
 
 struct CameraView: UIViewControllerRepresentable {
+  // TODO: - Add a closure to give SwiftUI access to the recognized landmarks
+  
   func makeUIViewController(context: Context) -> CameraViewController {
-    let cvc = CameraViewController()
-    return cvc
+    CameraViewController()
   }
 
   func updateUIViewController(

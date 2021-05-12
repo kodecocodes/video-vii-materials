@@ -32,10 +32,17 @@
 
 import UIKit
 import AVFoundation
-import Vision
 
 final class CameraViewController: UIViewController {
-  private var cameraView: CameraPreview { view as! CameraPreview }
+  
+  private var cameraCaptureSession = AVCaptureSession()
+  private var cameraPreview: CameraPreview { view as! CameraPreview }
+  
+  private let videoDataOutputQueue = DispatchQueue(
+    label: "CameraFeedOutput", qos: .userInteractive
+  )
+  
+  // TODO: - Add a hand pose request
   
   override func loadView() {
     view = CameraPreview()
@@ -43,26 +50,51 @@ final class CameraViewController: UIViewController {
   
   override func viewDidAppear(_ animated: Bool) {
     super.viewDidAppear(animated)
-
+    setupAVSession()
+    setupPreview()
+    cameraCaptureSession.startRunning()
   }
   
   override func viewWillDisappear(_ animated: Bool) {
-
+    cameraCaptureSession.stopRunning()
     super.viewWillDisappear(animated)
   }
   
-  override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
-    // Update video orientation based on interface orientation
-    
-    super.viewWillTransition(to: size, with: coordinator)
+  override func viewDidLayoutSubviews() {
+    cameraPreview.previewLayer.connection?.videoOrientation = AVCaptureVideoOrientation.currentDeviceOrientation
   }
   
-  func setupAVSession() throws {
-    // Select a front facing camera, make an input.
+  func setupPreview() {
+    cameraPreview.previewLayer.session = cameraCaptureSession
+    cameraPreview.previewLayer.videoGravity = .resizeAspectFill
+    cameraPreview.previewLayer.connection?.videoOrientation = AVCaptureVideoOrientation.currentDeviceOrientation
+  }
+  
+  func setupAVSession() {
+    // Start session configuration
+    cameraCaptureSession.beginConfiguration()
     
-    // Add a video input.
-
-    // Add a video data output.
+    // Setup video data input
+    guard
+      let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
+      let deviceInput = try? AVCaptureDeviceInput(device: videoDevice),
+      cameraCaptureSession.canAddInput(deviceInput)
+    else { return }
+    
+    cameraCaptureSession.sessionPreset = AVCaptureSession.Preset.high
+    cameraCaptureSession.addInput(deviceInput)
+    
+    // Setup video data output
+    let dataOutput = AVCaptureVideoDataOutput()
+    guard cameraCaptureSession.canAddOutput(dataOutput)
+    else { return }
+    
+    cameraCaptureSession.addOutput(dataOutput)
+    dataOutput.alwaysDiscardsLateVideoFrames = true
+    dataOutput.setSampleBufferDelegate(self, queue: videoDataOutputQueue)
+    
+    // Commit session configuration
+    cameraCaptureSession.commitConfiguration()
   }
 }
 
@@ -71,18 +103,18 @@ extension CameraViewController: AVCaptureVideoDataOutputSampleBufferDelegate {
   
 }
 
-// MARK: - Extensions
+// MARK: - AVCaptureVideoOrientation
 extension AVCaptureVideoOrientation {
-  static var currentInterfaceOrientation: AVCaptureVideoOrientation {
-    let interfaceOrientation = UIApplication.shared.windows.first?.windowScene?.interfaceOrientation
+  static var currentDeviceOrientation: AVCaptureVideoOrientation {
+    let deviceOrientation = UIDevice.current.orientation
     
-    switch interfaceOrientation {
+    switch deviceOrientation {
     case .portrait:
       return AVCaptureVideoOrientation.portrait
     case .landscapeLeft:
-      return AVCaptureVideoOrientation.landscapeLeft
-    case .landscapeRight:
       return AVCaptureVideoOrientation.landscapeRight
+    case .landscapeRight:
+      return AVCaptureVideoOrientation.landscapeLeft
     case .portraitUpsideDown:
       return AVCaptureVideoOrientation.portraitUpsideDown
     default:

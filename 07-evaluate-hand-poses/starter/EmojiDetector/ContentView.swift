@@ -33,13 +33,28 @@
 import SwiftUI
 
 struct ContentView: View {
+  @State private var overlayPoints: [CGPoint] = []
+  
+  // TODO: - Add @State property for poses
   
   var body: some View {
     ZStack(alignment: .top) {
-      Text("😺")
+      // TODO: - Update closure to include poses
+      CameraView { points in
+        overlayPoints = points
+      }
+      .overlay(
+        FingersOverlay(with: overlayPoints)
+          .foregroundColor(.orange)
+      )
+      .edgesIgnoringSafeArea(.all)
+      
+      Text("👋")
         .font(.largeTitle)
     }
   }
+  
+  // TODO: - Add method to concatenate pose emoji
 }
 
 struct ContentView_Previews: PreviewProvider {
