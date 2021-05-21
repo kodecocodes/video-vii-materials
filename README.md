@@ -1,6 +1,6 @@
-# Vision in iOS: Materials
+# Detect Hand & Body Poses with Vision in iOS: Materials
 
-This repo contains all the downloadable materials and projects associated with the **[Vision in iOS](https://www.raywenderlich.com/21129427-detect-hand-body-poses-with-vision-in-ios)** from [raywenderlich.com](https://www.raywenderlich.com).
+This repo contains all the downloadable materials and projects associated with the **[Detect Hand & Body Poses with Vision in iOS](https://www.raywenderlich.com/21129427-detect-hand-body-poses-with-vision-in-ios)** from [raywenderlich.com](https://www.raywenderlich.com).
 
 Each edition has its own branch, named `versions/[VERSION]`. The default branch for this repo is for the most recent edition.
 
